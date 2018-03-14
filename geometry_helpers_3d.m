@@ -52,6 +52,19 @@ function R=Rz_prime(rot_z)
       0  0  0];
 endfunction
 
+#from direction vector to rotation matrix
+function R=d2R(d)
+  #calcolo R
+  d_norm = sqrt(d(1)*d(1) + d(2)*d(2));
+  if (d_norm > 1e-4)
+    R = [d(1),d(2)/d_norm,d(1)*d(3)/d_norm;
+         d(2),-d(1)/d_norm,d(2)*d(3)/d_norm;
+         d(3),0,-d_norm];
+  else
+    R = eye(3);
+  endif
+endfunction
+
 #from 6d vector to homogeneous matrix
 function T=v2t(v)
     T=eye(4);

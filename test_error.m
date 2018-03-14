@@ -14,4 +14,4 @@ Xm = eye(4);
 Xm(1:3,4) = [5;5;5];
 Xm(1:3,1:3) = diag([1,2,3]);
 
-landmarkErrorAndJacobian(Xr,Xf,Xm)
+[e,Jr,Jl]=landmarkErrorAndJacobian(Xr,Xf,Xm);

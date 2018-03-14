@@ -1,25 +1,40 @@
 source "./geometry_helpers_3d.m"
 source "./bawm_indices.m"
 
-function X = landmarkPerturbation(Xl,dx)
+function Xlnew = pertLand(Xl,dx)
   dp = dx(1:3);
   dR = Ry(dx(4))*Rz(dx(5));
 
-  X = eye(4);
-  X(1:3,4)   = Xl(1:3,4) + dp;
-  X(1:3,1:3) = Xl(1:3,1:3)*dR;
-
+  Xlnew = zeros(9);
+  Xlnew(1:3) = Xl(1:3) + dp;
+  Xlnew(4:6) = dR*Xl(4:6);
+  Xlnew(7:9) = Xl(7:9);
 endfunction
 
-function e = errorFunction(Xr,Xl,Z)
+function Xlnew = transLand(Xl,X)
+  p = Xl(1:3);
+  d = Xl(4:6);
+  
+  t = X(1:3,4);
+  R = X(1:3,1:3);
+
+  Xlnew = zeros(9);
+  Xlnew(1:3) = R*p + t;
+  Xlnew(4:6) = R*d;
+  Xlnew(7:9) = Xl(7:9);
+endfunction
+
+function e = computeError(Xr,Xl,Z)
   R=Xr(1:3,1:3);
   t=Xr(1:3,4);
   
-  pl=Xl(1:3,4)
-  Rl=Xl(1:3,1:3)
+  pl=Xl(1:3);
+  dl=Xl(4:6);
+  Rl=d2R(dl);
   
-  pz=Z(1:3,4)
-  Rz=Z(1:3,1:3)
+  pz=Z(1:3);
+  dz=Z(4:6);
+  Rz=d2R(dz);
   
   ep = Rl'*(R*pz + t - pl);
   ed = (R*Rz - Rl)(:,1);
@@ -31,7 +46,7 @@ endfunction
 
 function [e,Jr,Jl]=landmarkErrorAndJacobian(Xr,Xl,Z)
 
-  e = errorFunction(Xr,Xl,Z);
+  e = computeError(Xr,Xl,Z);
   
   epsilon = 1e-3;
   
@@ -44,28 +59,26 @@ function [e,Jr,Jl]=landmarkErrorAndJacobian(Xr,Xl,Z)
     dxr(i)=-epsilon;
     Xr_minus=v2t(dxr)*Xr;
 
-    Jr(:,i)=errorFunction(Xr_plus,Xl,Z) - errorFunction(Xr_minus,Xl,Z);
+    Jr(:,i)=computeError(Xr_plus,Xl,Z) - computeError(Xr_minus,Xl,Z);
     dxr(i)=0;
 
   endfor
-
   Jr /= (2*epsilon);
 
   Jl = zeros(7,5);
   dxl=zeros(5,1);
   for i=1:5
     dxl(i)=epsilon;
-    Xl_plus=landmarkPerturbation(Xl,dxl);
+    Xl_plus=pertLand(Xl,dxl);
     
     dxl(i)=-epsilon;
-    Xl_minus=landmarkPerturbation(Xl,dxl);
+    Xl_minus=pertLand(Xl,dxl);
     
     
-    Jr(:,i)=errorFunction(Xr,Xl_plus,Z) - errorFunction(Xr,Xl_minus,Z);
+    Jl(:,i)=computeError(Xr,Xl_plus,Z) - computeError(Xr,Xl_minus,Z);
     dxr(i)=0;
 
   endfor
-
   Jl /= (2*epsilon);
 
   ## dep_dt  = Rf';
@@ -79,6 +92,4 @@ function [e,Jr,Jl]=landmarkErrorAndJacobian(Xr,Xl,Z)
 
   ## ded_dpf = zeros(3);
   ## ded_dRf = Rf*clippedSkew([1;0;0]);
-
-  
 end
