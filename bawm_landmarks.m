@@ -92,4 +92,10 @@ function [e,Jr,Jl]=landmarkErrorAndJacobian(Xr,Xl,Z)
 
   ## ded_dpf = zeros(3);
   ## ded_dRf = Rf*clippedSkew([1;0;0]);
+
+  ## de0_dt  = zeros(3);
+  ## deo_dR  = -[1,0,0]*Rm'*R'*skew(R*Rm[1;0;0]);
+
+  ## deo_dpf = zeros(3);
+  ## deo_dRf = -[1,0,0]*Rm'*R'*Rf*clippedSkew([1;0;0]);
 end
