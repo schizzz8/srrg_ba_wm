@@ -4,14 +4,19 @@ clc
 
 source "./bawm_landmarks.m"
 
-Xr = eye(4);
+#robot pose
+#Xr = eye(4);
+Xr = v2t([1;2;3;0.1;0.2;0.3]);
 
-Xf = eye(4);
-Xf(1:3,4) = [5;5;5];
-Xf(1:3,1:3) = diag([1,2,3]);
 
-Xm = eye(4);
-Xm(1:3,4) = [5;5;5];
-Xm(1:3,1:3) = diag([1,2,3]);
+Z = zeros(12);
+Z(1:3,1) = [10;5;4];
+#RZ = eye(3);
+RZ = Rx(0.5)*Ry(0.6)*Rz(0.7);
+Z(4:12,1) = RZ(:);
 
-[e,Jr,Jl]=landmarkErrorAndJacobian(Xr,Xf,Xm);
+Xl = transLand(Z, Xr);
+
+
+
+[e,Jrn,Jln,Jra,Jla]=landmarkErrorAndJacobian(Xr,Xl,Z)
