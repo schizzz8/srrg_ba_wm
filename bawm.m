@@ -64,6 +64,9 @@ function [XR, XL,chi_stats_l, num_inliers_l,H, b]=doTotalLS(XR, XL,
     % this corresponds to "remove" from H and b the locks
     % of the 1st pose, while solving the system
 
+    c = rank(H)
+    s = size(H)
+    
     dx(pose_dim+1:end)=-(H(pose_dim+1:end,pose_dim+1:end)\b(pose_dim+1:end,1));
     [XR, XL]=boxPlus(XR,XL,num_poses, num_landmarks, dx);
   endfor
@@ -77,9 +80,12 @@ function P_world=makeWorld(num_landmarks,world_size)
   for i=1:num_landmarks
     L=zeros(matchable_dim,1);
     L(1:3,1)     = (rand(3,1)-0.5)*world_size;
-    Rl = eye(3);
+    #Rl = eye(3);
+    dl=rand(3,1);
+    dl/=norm(dl);
+    Rl=d2R(dl);
     L(4:12,1)    = Rl(:);
-    L(13:15,1)   = ones(3,1);
+    L(13) = 2;
     P_world(:,i) = L;
   endfor
 endfunction

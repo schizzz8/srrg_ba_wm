@@ -9,7 +9,7 @@ function Xlnew = pertLand(Xl,dx)
   Xlnew = zeros(matchable_dim,1);
   Xlnew(1:3,1)   = Xl(1:3,1) + dp;
   Xlnew(4:12,1)  = (reshape(Xl(4:12,1),3,3)*dR)(:);
-  Xlnew(13:15,1) = Xl(13:15,1);
+  Xlnew(13) = Xl(13);
 endfunction
 
 function Xlnew = transLand(Xl,X)
@@ -24,7 +24,7 @@ function Xlnew = transLand(Xl,X)
   Xlnew = zeros(matchable_dim,1);
   Xlnew(1:3,1) = R*pl + t;
   Xlnew(4:12,1) = (R*Rl)(:);
-  Xlnew(13:15,1) = Xl(13:15,1);
+  Xlnew(13) = Xl(13);
 endfunction
 
 function e = computeError(Xr,Xl,Z)
@@ -124,49 +124,46 @@ function [e,Jra,Jla]=landmarkErrorAndAnalyticJacobian(Xr,Xl,Z)
          deo_dpl,deo_dRl];
 end
 
+
 function Omega=computeOmega(Xl,Z)
+  epsilon = 1e-3;
+
+  type_l=Xl(13);
+  Omega_l=eye(3);
+  switch(type_l)
+#point
+    case 1
+      Omega_l=eye(3);
+    case 2
+      Omega_l=diag([epsilon,1,1]);
+    case 3
+      Omega_l=diag([1,epsilon, epsilon]);
+    otherwise
+      disp('irrumati');
+  endswitch;
+
+  type_z=Z(13);
+  Omega_z=eye(3);
+  switch(type_z)
+    case 1
+      Omega_z=eye(3);
+    case 2
+      Omega_z=diag([epsilon,1,1]);
+    case 3
+      Omega_z=diag([1,epsilon, epsilon]);
+    otherwise
+      disp('irrumati');
+  endswitch;
+  
   Omega=zeros(7);
-
-  if(Xl(13:15) == [1;1;1])
-    if(Z(13:15) == [1;1;1]) #point-point
-      Omega(1:3,1:3) = eye(3);
-    endif
-    if(Z(13:15) == [0;1;1]) #point-line
-      Omega(1:3,1:3) = diag([0;1;1]); 
-    endif
-    if(Z(13:15) == [1;0;0]) #point-plane
-      Omega(1:3,1:3) = diag([1;0;0]);
-    endif
-  endif
-
-  if(Xl(13:15) == [0;1;1])
-    if(Z(13:15) == [1;1;1]) #line-point
-      Omega(1:3,1:3) = diag([0;1;1]);
-    endif
-    if(Z(13:15) == [0;1;1]) #line-line
-      Omega(1:3,1:3) = diag([0;1;1]);
-      Omega(4:6,4:6) = eye(3)
-    endif
-    if(Z(13:15) == [1;0;0]) #line-plane
-      Omega(1:3,1:3) = diag([1;0;0]);
-      Omega(7,7) = 1;
-    endif
-  endif
-
-  if(Xl(13:15) == [1;0;0])
-    if(Z(13:15) == [1;1;1]) #plane-point
-      Omega(1:3,1:3) = diag([1;0;0]);
-    endif
-    if(Z(13:15) == [0;1;1]) #plane-line
-      Omega(1:3,1:3) = diag([1;0;0]);
-      Omega(7,7) = 1;
-    endif
-    if(Z(13:15) == [1;0;0]) #plane-plane
-      Omega(1:3,1:3) = diag([1;0;0]);
-      Omega(4:6,4:6) = eye(3)
-    endif
-  endif
-
+  Omega(1:3,1:3)=Omega_l;
+  if (type_l==type_z && type_l>1)
+    Omega(4:6,4:6)=eye(3);
+  endif;
+  if ((type_l==2 && type_z==3)
+      ||(type_l==3 && type_z==2))
+    Omega(7,7)=1;
+  endif;
 endfunction
 
 function [H,b, chi_tot, num_inliers]=linearizeLandmarks(XR, XL, Zl, associations,num_poses, num_landmarks, kernel_threshold)

@@ -1,7 +1,7 @@
 #(minimal) size of pose and landmarks
 global pose_dim=6;
 global landmark_dim=5;
-global matchable_dim=15;
+global matchable_dim=13; #last field is the type: 1:point, 2:line, 3:plane
 
 function v_idx=poseMatrixIndex(pose_index, num_poses, num_landmarks)
   global pose_dim;
