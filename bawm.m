@@ -17,20 +17,18 @@ function [XR, XL]=boxPlus(XR, XL, num_poses, num_landmarks, dx)
   endfor;
 endfunction;
 
-function [XR, XL, chi_stats_l, num_inliers_l, chi_stats_p,
-          num_inliers_p,chi_stats_r, num_inliers_r, H, b]=doTotalLS(XR, XL,
-	                                                                    Zl,
-                                                                      landmark_associations,
-	     Zp, projection_associations,
-	     Zr, pose_associations,
-	     num_poses,
-	     num_landmarks,
-	     num_iterations,
-	     damping,
-	     kernel_threshold)
+function [XR, XL,chi_stats_l, num_inliers_l,H, b]=doTotalLS(XR, XL,
+	                                                   Zl,
+                                                     landmark_associations,
+	                                                   num_poses,
+	                                                   num_landmarks,
+	                                                   num_iterations,
+	                                                   damping,
+	                                                   kernel_threshold)
 
   global pose_dim;
   global landmark_dim;
+  global matchable_dim;
 
   chi_stats_l=zeros(1,num_iterations);
   num_inliers_l=zeros(1,num_iterations);
@@ -40,15 +38,48 @@ function [XR, XL, chi_stats_l, num_inliers_l, chi_stats_p,
   num_inliers_r=zeros(1,num_iterations);
 
   # size of the linear system
-  system_size=pose_dim*num_poses+landmark_dim*num_landmarks;
+  system_size=pose_dim*num_poses+landmark_dim*num_landmarks; 
   for (iteration=1:num_iterations)
     H=zeros(system_size, system_size);
     b=zeros(system_size,1);
-
+   
+    if (num_landmarks) 
+      [H_landmarks, b_landmarks, chi_, num_inliers_] = linearizeLandmarks(XR, XL, Zl, landmark_associations,num_poses, num_landmarks, kernel_threshold);
+      chi_stats_l(iteration)=chi_;
+      num_inliers_l(iteration)=num_inliers_;
+    endif;
     
+    ## H=H_poses;
+    ## b=b_poses;
+    
+    if (num_landmarks) 
+       H+=H_landmarks;
+       b+=b_landmarks;
+    endif;
 
+    H+=eye(system_size)*damping;
+    dx=zeros(system_size,1);
+
+    % we solve the linear system, blocking the first pose
+    % this corresponds to "remove" from H and b the locks
+    % of the 1st pose, while solving the system
+
+    dx(pose_dim+1:end)=-(H(pose_dim+1:end,pose_dim+1:end)\b(pose_dim+1:end,1));
+    [XR, XL]=boxPlus(XR,XL,num_poses, num_landmarks, dx);
   endfor
-
 
 endfunction
 
+function P_world=makeWorld(num_landmarks,world_size)
+  global matchable_dim;
+  P_world=zeros(matchable_dim,num_landmarks);
+
+  for i=1:num_landmarks
+    L=zeros(matchable_dim,1);
+    L(1:3,1)     = (rand(3,1)-0.5)*world_size;
+    Rl = eye(3);
+    L(4:12,1)    = Rl(:);
+    L(13:15,1)   = ones(3,1);
+    P_world(:,i) = L;
+  endfor
+endfunction

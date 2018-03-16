@@ -6,7 +6,7 @@ function Xlnew = pertLand(Xl,dx)
   dR = Ry(dx(4))*Rz(dx(5));
 
   global matchable_dim;
-  Xlnew = zeros(matchable_dim);
+  Xlnew = zeros(matchable_dim,1);
   Xlnew(1:3,1)   = Xl(1:3,1) + dp;
   Xlnew(4:12,1)  = (reshape(Xl(4:12,1),3,3)*dR)(:);
   Xlnew(13:15,1) = Xl(13:15,1);
@@ -21,7 +21,7 @@ function Xlnew = transLand(Xl,X)
   R = X(1:3,1:3);
 
   global matchable_dim;
-  Xlnew = zeros(matchable_dim);
+  Xlnew = zeros(matchable_dim,1);
   Xlnew(1:3,1) = R*pl + t;
   Xlnew(4:12,1) = (R*Rl)(:);
   Xlnew(13:15,1) = Xl(13:15,1);
@@ -45,13 +45,13 @@ function e = computeError(Xr,Xl,Z)
 
 endfunction
 
-function [e,Jrn,Jln]=landmarkErrorAndJacobian(Xr,Xl,Z)
+function [e,Jr,Jl]=landmarkErrorAndJacobian(Xr,Xl,Z)
 
   e = computeError(Xr,Xl,Z);
   
   epsilon = 1e-4;
   
-  Jrn = zeros(7,6);
+  Jr = zeros(7,6);
   dxr=zeros(6,1);
   for i=1:6
     dxr(i)=epsilon;
@@ -60,12 +60,12 @@ function [e,Jrn,Jln]=landmarkErrorAndJacobian(Xr,Xl,Z)
     dxr(i)=-epsilon;
     Xr_minus=v2t(dxr)*Xr;
 
-    Jrn(:,i)=computeError(Xr_plus,Xl,Z) - computeError(Xr_minus,Xl,Z);
+    Jr(:,i)=computeError(Xr_plus,Xl,Z) - computeError(Xr_minus,Xl,Z);
     dxr(i)=0;
   endfor
-  Jrn /= (2*epsilon);
+  Jr /= (2*epsilon);
 
-  Jln = zeros(7,5);
+  Jl = zeros(7,5);
   dxl=zeros(5,1);
   for i=1:5
     dxl(i)=epsilon;
@@ -74,10 +74,10 @@ function [e,Jrn,Jln]=landmarkErrorAndJacobian(Xr,Xl,Z)
     dxl(i)=-epsilon;
     Xl_minus=pertLand(Xl,dxl);    
     
-    Jln(:,i)=computeError(Xr,Xl_plus,Z) - computeError(Xr,Xl_minus,Z);
+    Jl(:,i)=computeError(Xr,Xl_plus,Z) - computeError(Xr,Xl_minus,Z);
     dxr(i)=0;
   endfor
-  Jln /= (2*epsilon);
+  Jl /= (2*epsilon);
 end
 
 function [e,Jra,Jla]=landmarkErrorAndAnalyticJacobian(Xr,Xl,Z)
@@ -188,7 +188,7 @@ function [H,b, chi_tot, num_inliers]=linearizeLandmarks(XR, XL, Zl, associations
     z=Zl(:,measurement_num);
     Xr=XR(:,:,pose_index);
     Xl=XL(:,landmark_index);
-    [e,Jr,Jl] = landmarkErrorAndJacobian(Xr, Xl, z);
+    [e,Jr,Jl] = landmarkErrorAndAnalyticJacobian(Xr, Xl, z);
     chi=e'*e;
     if (chi>kernel_threshold)
       e*=sqrt(kernel_threshold/chi);
