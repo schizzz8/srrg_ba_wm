@@ -126,7 +126,7 @@ end
 
 
 function Omega=computeOmega(Xl,Z)
-  epsilon = 1e-3;
+  epsilon = 1e-4;
 
   type_l=Xl(13);
   Omega_l=eye(3);
@@ -186,7 +186,9 @@ function [H,b, chi_tot, num_inliers]=linearizeLandmarks(XR, XL, Zl, associations
     Xr=XR(:,:,pose_index);
     Xl=XL(:,landmark_index);
     [e,Jr,Jl] = landmarkErrorAndAnalyticJacobian(Xr, Xl, z);
-    chi=e'*e;
+    Omega=computeOmega(Xl,z);
+
+    chi=e'*Omega*e;
     if (chi>kernel_threshold)
       e*=sqrt(kernel_threshold/chi);
       chi=kernel_threshold;
@@ -194,7 +196,6 @@ function [H,b, chi_tot, num_inliers]=linearizeLandmarks(XR, XL, Zl, associations
       num_inliers++;
     endif;
     chi_tot+=chi;
-    Omega=computeOmega(Xl,z);
 
     pose_matrix_index=poseMatrixIndex(pose_index, num_poses, num_landmarks);
     landmark_matrix_index=landmarkMatrixIndex(landmark_index, num_poses, num_landmarks);

@@ -11,7 +11,8 @@ world_size=10;
 
 # landmarks in a matrix, one per column
 #P_world=(rand(matchable_dim,num_landmarks)-0.5)*world_size;
-P_world=makeWorld(num_landmarks,world_size);
+#P_world=makeWorld(num_landmarks,world_size);
+P_world=makePlanesWorld(num_landmarks,world_size);
 
 # poses in an array of 4x4 homogeneous transform matrices
 XR_true=zeros(4,4,num_poses);
@@ -33,23 +34,10 @@ for (pose_num=2:num_poses)
 endfor;
 
 ######################################## LANDMARK MEASUREMENTS ######################################## 
-# generate an ideal number of landmark measurements
-# each pose observes each landmark
-num_landmark_measurements=num_poses*num_landmarks;
-Zl=zeros(matchable_dim,num_landmark_measurements);
-landmark_associations=zeros(2,num_landmark_measurements);
+## # generate an ideal number of landmark measurements
+## # each pose observes each landmark
 
-measurement_num=1;
-for (pose_num=1:num_poses)
-    Xr=inv(XR_true(:,:,pose_num));
-    for (landmark_num=1:num_landmarks)
-	    Xl=XL_true(:,landmark_num);
-	    landmark_associations(:,measurement_num)=[pose_num,landmark_num]';
-      Zl(:,measurement_num)=transLand(Xl,Xr);
-      measurement_num++;
-    endfor;
-endfor
-
+[Zl,landmark_associations]=generateMeasurements(num_poses,num_landmarks,XR_true,XL_true);
 
 ############################## GENERATION OF (WRONG) INITIAL GUESS ################################## 
 
@@ -70,6 +58,7 @@ for landmark_num=1:num_landmarks
   dXl=(rand(5,1)-0.5)*pert_deviation;
   XL_guess(:,landmark_num)=pertLand(XL_true(:,landmark_num),dXl);
 endfor
+
 
 ############################## CALL SOLVER  ################################## 
 
