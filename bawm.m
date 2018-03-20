@@ -122,9 +122,18 @@ function Xl=generateLandmarks(num_points,num_lines,num_planes,world_size)
   endfor
 
 endfunction
-  
 
-function Z=generatePointMeasurement(Xr,Xl)
+function Z=generatePointMeasurementFromLine(Xr,Xl)
+  #generate measurement
+  global matchable_dim;
+  Z=zeros(matchable_dim,1);
+  Z(1:3,1)=Xl(1:3,1);
+  Rz=eye(3);
+  Z(4:12,1)=Rz(:);
+  Z(13)=1;
+endfunction
+
+function Z=generatePointMeasurementFromPlane(Xr,Xl)
 
   #plane defined by robot pose
   pr=Xr(1:3,4);
@@ -153,7 +162,7 @@ function Z=generatePointMeasurement(Xr,Xl)
   Z(13)=1;
 endfunction
 
-function Z=generateLineMeasurement(Xr,Xl)
+function Z=generateLineMeasurementFromPlane(Xr,Xl)
 
   #plane defined by robot pose
   pr=Xr(1:3,4);
@@ -186,41 +195,100 @@ function Z=generateLineMeasurement(Xr,Xl)
   Z(13)=2;
 endfunction
 
-function Z=generatePlaneMeasurement(Xr,Xl)
-
-  #transform landmark in robot frame
-  Z=transLand(Xl,Xr);
-
-endfunction
-
-function [Zl,landmark_associations]=generateMeasurements(num_poses,num_landmarks,XR_true,XL_true)
+function [Zl,landmark_associations]=generateMeasurements(num_poses,num_points,num_lines,num_planes,XR_true,XL_true,constraints)
   global matchable_dim;
-  num_landmark_measurements=num_poses*num_landmarks;
-  Zl=zeros(matchable_dim,num_landmark_measurements);
-  landmark_associations=zeros(2,num_landmark_measurements);
+  num_landmarks=num_points+num_lines+num_planes;
+
+  num_point_point_measurements=0;
+  num_line_point_measurements=0;
+  num_line_line_measurements=0;
+  num_plane_point_measurements=0;
+  num_plane_line_measurements=0;
+  num_plane_plane_measurements=0;
+  
+  if(constraints(1) == 1)
+    num_point_point_measurements = num_points;
+  endif
+  if(constraints(2) == 1)
+    num_line_point_measurements = num_lines;
+  endif
+  if(constraints(3) == 1)
+    num_line_line_measurements = num_lines;
+  endif
+  if(constraints(4) == 1)
+    num_plane_point_measurements = num_planes;
+  endif
+  if(constraints(5) == 1)
+    num_plane_line_measurements = num_planes;
+  endif
+  if(constraints(6) == 1)
+    num_plane_plane_measurements = num_planes;
+  endif
+  
+  num_measurements=num_poses*(num_point_point_measurements+num_line_point_measurements+num_line_line_measurements+num_plane_point_measurements+num_plane_line_measurements+num_plane_plane_measurements);
+  Zl=zeros(matchable_dim,num_measurements);
+  landmark_associations=zeros(2,num_measurements);
   
   measurement_num=1;
   for pose_num=1:num_poses
     Xr=inv(XR_true(:,:,pose_num));
-    for (landmark_num=1:num_landmarks)
-	    Xl=XL_true(:,landmark_num);
-	    landmark_associations(:,measurement_num)=[pose_num,landmark_num]';
 
-      ## constraint_type=Xl(13);
-      
-      ## switch(constraint_type)
-      ##   case 1
-      ##     Zl(:,measurement_num)=generatePointMeasurement(Xr,Xl);
-      ##   case 2
-      ##     Zl(:,measurement_num)=generateLineMeasurement(Xr,Xl);
-      ##   case 3
-      ##     Zl(:,measurement_num)=generatePlaneMeasurement(Xr,Xl);
-      ##   otherwise
-      ##     disp('irrumati');
-      ## endswitch
+    if(constraints(1) == 1) #point-point
+      for landmark_num=1:num_points
+        Xl=XL_true(:,landmark_num);
+	      landmark_associations(:,measurement_num)=[pose_num,landmark_num]';
+        Zl(:,measurement_num)=transLand(Xl,Xr);	    
+        measurement_num++;
+      endfor
+    endif
 
-      Zl(:,measurement_num)=transLand(Xl,Xr);	    
-      measurement_num++;
-    endfor;
+    if(constraints(2) == 1) #line-point
+      for landmark_num=1:num_lines
+        Xl=XL_true(:,num_points+landmark_num);
+	      landmark_associations(:,measurement_num)=[pose_num,num_points+landmark_num]';
+        Xl=transLand(Xl,Xr);
+        Zl(:,measurement_num)=generatePointMeasurementFromLine(Xr,Xl);	    
+        measurement_num++;
+      endfor
+    endif
+
+    if(constraints(3) == 1) #line-line
+      for landmark_num=1:num_lines
+        Xl=XL_true(:,num_points+landmark_num);
+	      landmark_associations(:,measurement_num)=[pose_num,num_points+landmark_num]';
+        Zl(:,measurement_num)=transLand(Xl,Xr);	    
+        measurement_num++;
+      endfor
+    endif
+
+    if(constraints(4) == 1) #plane-point
+      for landmark_num=1:num_planes
+        Xl=XL_true(:,num_points+num_lines+landmark_num);
+	      landmark_associations(:,measurement_num)=[pose_num,num_points+num_lines+landmark_num]';
+        Xl=transLand(Xl,Xr);
+        Zl(:,measurement_num)=generatePointMeasurementFromPlane(Xr,Xl);	    
+        measurement_num++;
+      endfor
+    endif
+
+    if(constraints(5) == 1) #plane-line
+      for landmark_num=1:num_planes
+        Xl=XL_true(:,num_points+num_lines+landmark_num);
+	      landmark_associations(:,measurement_num)=[pose_num,num_points+num_lines+landmark_num]';
+        Xl=transLand(Xl,Xr);
+        Zl(:,measurement_num)=generateLineMeasurementFromPlane(Xr,Xl);	    
+        measurement_num++;
+      endfor
+    endif
+
+    if(constraints(6) == 1) #plane-plane
+      for landmark_num=1:num_planes
+        Xl=XL_true(:,num_points+num_lines+landmark_num);
+	      landmark_associations(:,measurement_num)=[pose_num,num_points+num_lines+landmark_num]';
+        Zl(:,measurement_num)=transLand(Xl,Xr);	    
+        measurement_num++;
+      endfor
+    endif
+    
   endfor
 endfunction

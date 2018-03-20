@@ -11,6 +11,12 @@ num_planes=10;
 num_landmarks=num_points+num_lines+num_planes;
 num_poses=10;
 world_size=10;
+constraints=[1;  #point-point
+             0;  #line-point
+             1;  #line-line
+             0;  #plane-point
+             0;  #plane-line
+             1]; #plane-plane
 
 # poses in an array of 4x4 homogeneous transform matrices
 XR_true=zeros(4,4,num_poses);
@@ -35,7 +41,7 @@ endfor;
 ## # generate an ideal number of landmark measurements
 ## # each pose observes each landmark
 
-[Zl,landmark_associations]=generateMeasurements(num_poses,num_landmarks,XR_true,XL_true);
+[Zl,landmark_associations]=generateMeasurements(num_poses,num_points,num_lines,num_planes,XR_true,XL_true,constraints);
 
 ############################## GENERATION OF (WRONG) INITIAL GUESS ################################## 
 
