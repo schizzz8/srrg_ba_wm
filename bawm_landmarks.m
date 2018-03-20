@@ -8,7 +8,9 @@ function Xlnew = pertLand(Xl,dx)
   global matchable_dim;
   Xlnew = zeros(matchable_dim,1);
   Xlnew(1:3,1)   = Xl(1:3,1) + dp;
-  Xlnew(4:12,1)  = (reshape(Xl(4:12,1),3,3)*dR)(:);
+  if(Xl(13)==2 || Xl(13)==3)
+    Xlnew(4:12,1)  = (reshape(Xl(4:12,1),3,3)*dR)(:);
+  endif
   Xlnew(13) = Xl(13);
 endfunction
 
@@ -126,7 +128,7 @@ end
 
 
 function Omega=computeOmega(Xl,Z)
-  epsilon = 1e-4;
+  epsilon = 0;
 
   type_l=Xl(13);
   Omega_l=eye(3);

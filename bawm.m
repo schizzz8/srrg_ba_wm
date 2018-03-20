@@ -73,76 +73,84 @@ function [XR, XL,chi_stats_l, num_inliers_l,H, b]=doTotalLS(XR, XL,
 
 endfunction
 
-## function P_world=makeWorld(num_landmarks,world_size)
-##   global matchable_dim;
-##   P_world=zeros(matchable_dim,num_landmarks);
-
-##   for i=1:num_landmarks
-##     L=zeros(matchable_dim,1);
-##     L(1:3,1)     = (rand(3,1)-0.5)*world_size;
-##     #Rl = eye(3);
-##     dl=rand(3,1);
-##     dl/=norm(dl);
-##     Rl=d2R(dl);
-##     L(4:12,1)    = Rl(:);
-##     L(13) = 2;
-##     P_world(:,i) = L;
-##   endfor
-## endfunction
-
-function P_world=makePlanesWorld(num_landmarks,world_size)
+function Xl=generatePointLandmark(world_size)
   global matchable_dim;
-  P_world=zeros(matchable_dim,num_landmarks);
-
-  for i=1:num_landmarks
-    L=zeros(matchable_dim,1);
-    L(1:3,1)     = (rand(3,1)-0.5)*world_size;
-    #Rl = eye(3);
-    dl=rand(3,1);
-    dl/=norm(dl);
-    Rl=d2R(dl);
-    L(4:12,1)    = Rl(:);
-    L(13) = 3;
-    P_world(:,i) = L;
-  endfor
+  Xl=zeros(matchable_dim,1);
+  Xl(1:3,1)=(rand(3,1)-0.5)*world_size;
+  Rl=eye(3);
+  Xl(4:12,1)=Rl(:);
+  Xl(13) = 1;
 endfunction
 
-function [Zl,landmark_associations]=generateMeasurements(num_poses,num_landmarks,XR_true,XL_true)
+function Xl=generateLineLandmark(world_size)
   global matchable_dim;
-  num_landmark_measurements=num_poses*num_landmarks;
-  Zl=zeros(matchable_dim,num_landmark_measurements);
-  landmark_associations=zeros(2,num_landmark_measurements);
+  Xl=zeros(matchable_dim,1);
+  Xl(1:3,1)=(rand(3,1)-0.5)*world_size;
+  dl=rand(3,1);
+  dl/=norm(dl);
+  Rl=d2R(dl);
+  Xl(4:12,1)=Rl(:);
+  Xl(13)=2;
+endfunction
+
+function Xl=generatePlaneLandmark(world_size)
+  global matchable_dim;
+  Xl=zeros(matchable_dim,1);
+  Xl(1:3,1)=(rand(3,1)-0.5)*world_size;
+  dl=rand(3,1);
+  dl/=norm(dl);
+  Rl=d2R(dl);
+  Xl(4:12,1)=Rl(:);
+  Xl(13)=3;
+endfunction
+
+function Xl=generateLandmarks(num_points,num_lines,num_planes,world_size)
+  global matchable_dim;
+  num_landmarks = num_points+num_lines+num_planes;
+  Xl=zeros(matchable_dim,num_landmarks);
+
+  for i=1:num_points
+    Xl(:,i) = generatePointLandmark(world_size);
+  endfor
+
+  for i=1:num_lines
+    Xl(:,num_points+i) = generateLineLandmark(world_size);
+  endfor
+
+  for i=1:num_planes
+    Xl(:,num_points+num_lines+i) = generatePlaneLandmark(world_size);
+  endfor
+
+endfunction
   
-  measurement_num=1;
-  for pose_num=1:num_poses
-    Xr=inv(XR_true(:,:,pose_num));
-    for (landmark_num=1:num_landmarks)
-	    Xl=XL_true(:,landmark_num);
-	    landmark_associations(:,measurement_num)=[pose_num,landmark_num]';
 
-      constraint_type=3;
-      
-      switch(constraint_type)
-        case 1
-          Zl(:,measurement_num)=generatePointMeasurement(Xr,Xl);
-        case 2
-          Zl(:,measurement_num)=generateLineMeasurement(Xr,Xl);
-        case 3
-          Zl(:,measurement_num)=generatePlaneMeasurement(Xr,Xl);
-        otherwise
-          disp('irrumati');
-      endswitch
-          
-      measurement_num++;
-    endfor;
-  endfor
-endfunction
+function Z=generatePointMeasurement(Xr,Xl)
 
-function Z=generatePlaneMeasurement(Xr,Xl)
+  #plane defined by robot pose
+  pr=Xr(1:3,4);
+  nr=Xr(1:3,3);
+  dr=-nr'*pr;   
 
-  #transform landmark in robot frame
-  Z=transLand(Xl,Xr);
+  #plane defined by landmark
+  pl=Xl(1:3,1);
+  #nl=Xl(10:12,1); 
+  nl=Xl(4:6,1); 
+  dl=-nl'*pl;   
 
+  #point
+  A=[nr(1), nr(2);
+     nl(1), nl(2)];
+  b=[-dr;
+     -dl];
+  pz=A\b;
+
+  #generate measurement
+  global matchable_dim;
+  Z=zeros(matchable_dim,1);
+  Z(1:3,1)=[pz;0];
+  Rz=eye(3);
+  Z(4:12,1)=Rz(:);
+  Z(13)=1;
 endfunction
 
 function Z=generateLineMeasurement(Xr,Xl)
@@ -178,31 +186,41 @@ function Z=generateLineMeasurement(Xr,Xl)
   Z(13)=2;
 endfunction
 
-function Z=generatePointMeasurement(Xr,Xl)
+function Z=generatePlaneMeasurement(Xr,Xl)
 
-  #plane defined by robot pose
-  pr=Xr(1:3,4);
-  nr=Xr(1:3,3);
-  dr=-nr'*pr;   
+  #transform landmark in robot frame
+  Z=transLand(Xl,Xr);
 
-  #plane defined by landmark
-  pl=Xl(1:3,1);
-  #nl=Xl(10:12,1); 
-  nl=Xl(4:6,1); 
-  dl=-nl'*pl;   
+endfunction
 
-  #point
-  A=[nr(1), nr(2);
-     nl(1), nl(2)];
-  b=[-dr;
-     -dl];
-  pz=A\b;
-
-  #generate measurement
+function [Zl,landmark_associations]=generateMeasurements(num_poses,num_landmarks,XR_true,XL_true)
   global matchable_dim;
-  Z=zeros(matchable_dim,1);
-  Z(1:3,1)=[pz;0];
-  Rz=eye(3);
-  Z(4:12,1)=Rz(:);
-  Z(13)=1;
+  num_landmark_measurements=num_poses*num_landmarks;
+  Zl=zeros(matchable_dim,num_landmark_measurements);
+  landmark_associations=zeros(2,num_landmark_measurements);
+  
+  measurement_num=1;
+  for pose_num=1:num_poses
+    Xr=inv(XR_true(:,:,pose_num));
+    for (landmark_num=1:num_landmarks)
+	    Xl=XL_true(:,landmark_num);
+	    landmark_associations(:,measurement_num)=[pose_num,landmark_num]';
+
+      ## constraint_type=Xl(13);
+      
+      ## switch(constraint_type)
+      ##   case 1
+      ##     Zl(:,measurement_num)=generatePointMeasurement(Xr,Xl);
+      ##   case 2
+      ##     Zl(:,measurement_num)=generateLineMeasurement(Xr,Xl);
+      ##   case 3
+      ##     Zl(:,measurement_num)=generatePlaneMeasurement(Xr,Xl);
+      ##   otherwise
+      ##     disp('irrumati');
+      ## endswitch
+
+      Zl(:,measurement_num)=transLand(Xl,Xr);	    
+      measurement_num++;
+    endfor;
+  endfor
 endfunction

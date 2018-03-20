@@ -5,18 +5,16 @@ clc
 source "./bawm.m"
 
 # synthesis of the virtual world
-num_landmarks=100;
+num_points=10;
+num_lines=10;
+num_planes=10;
+num_landmarks=num_points+num_lines+num_planes;
 num_poses=10;
 world_size=10;
 
-# landmarks in a matrix, one per column
-#P_world=(rand(matchable_dim,num_landmarks)-0.5)*world_size;
-#P_world=makeWorld(num_landmarks,world_size);
-P_world=makePlanesWorld(num_landmarks,world_size);
-
 # poses in an array of 4x4 homogeneous transform matrices
 XR_true=zeros(4,4,num_poses);
-XL_true=P_world;
+XL_true=generateLandmarks(num_points,num_lines,num_planes,world_size);
 
 # initialize 1st pose
 XR_true(:,:,1)=eye(4);
@@ -47,17 +45,17 @@ pert_scale=eye(6)*pert_deviation;
 XR_guess=XR_true;
 XL_guess=XL_true;
 
-for (pose_num=2:num_poses)
-    xr=rand(6,1)-0.5;
-    dXr=v2t(pert_scale*xr);
-    XR_guess(:,:,pose_num)=dXr*XR_guess(:,:,pose_num);
-endfor;
+## for (pose_num=2:num_poses)
+##     xr=rand(6,1)-0.5;
+##     dXr=v2t(pert_scale*xr);
+##     XR_guess(:,:,pose_num)=dXr*XR_guess(:,:,pose_num);
+## endfor;
 
 #apply a perturbation to each landmark
-for landmark_num=1:num_landmarks
-  dXl=(rand(5,1)-0.5)*pert_deviation;
-  XL_guess(:,landmark_num)=pertLand(XL_true(:,landmark_num),dXl);
-endfor
+## for landmark_num=1:num_landmarks
+##   dXl=(rand(5,1)-0.5)*pert_deviation;
+##   XL_guess(:,landmark_num)=pertLand(XL_true(:,landmark_num),dXl);
+## endfor
 
 
 ############################## CALL SOLVER  ################################## 
@@ -74,7 +72,7 @@ endfor
 
 damping=0;
 kernel_threshold=1e3;
-num_iterations=10;
+num_iterations=1;
 [XR, XL,chi_stats_l, num_inliers_l,H, b]=doTotalLS(XR_guess, XL_guess, 
 												      Zl, landmark_associations, 
 												      num_poses, 
